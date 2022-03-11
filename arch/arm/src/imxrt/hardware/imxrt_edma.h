@@ -1257,32 +1257,19 @@
 
 struct imxrt_edmatcd_s
 {
-  uint32_t saddr;         /* Offset: 0x0000  TCD Source Address */
-#ifdef CONFIG_ENDIAN_BIG
-  uint16_t attr;          /* Offset: 0x0004  TCD Transfer Attributes */
-  uint16_t soff;          /* Offset: 0x0006  TCD Signed Source Address Offset */
-#else
-  uint16_t soff;          /* Offset: 0x0004  TCD Signed Source Address Offset */
-  uint16_t attr;          /* Offset: 0x0006  TCD Transfer Attributes */
-#endif
-  uint32_t nbytes;        /* Offset: 0x0008  TCD Signed Minor Loop Offset / Byte Count */
-  uint32_t slast;         /* Offset: 0x000c  TCD Last Source Address Adjustment */
-  uint32_t daddr;         /* Offset: 0x0010  TCD Destination Address */
-#ifdef CONFIG_ENDIAN_BIG
-  uint16_t citer;         /* Offset: 0x0014  TCD Current Minor Loop Link, Major Loop Count */
-  uint16_t doff;          /* Offset: 0x0016  TCD Signed Destination Address Offset */
-#else
-  uint16_t doff;          /* Offset: 0x0014  TCD Signed Destination Address Offset */
-  uint16_t citer;         /* Offset: 0x0016  TCD Current Minor Loop Link, Major Loop Count */
-#endif
-  uint32_t dlastsga;      /* Offset: 0x0018  TCD Last Destination Address Adjustment/Scatter Gather Address */
-#ifdef CONFIG_ENDIAN_BIG
-  uint16_t biter;         /* Offset: 0x001c  TCD Beginning Minor Loop Link, Major Loop Count */
-  uint16_t csr;           /* Offset: 0x001e  TCD Control and Status */
-#else
-  uint16_t csr;           /* Offset: 0x001c  TCD Control and Status */
-  uint16_t biter;         /* Offset: 0x001e  TCD Beginning Minor Loop Link, Major Loop Count */
-#endif
+  sq_entry_t node;
+  uint8_t    flags;         /* See EDMA_CONFIG_* definitions */
+  uint32_t   saddr;         /* Offset: 0x0000  TCD Source Address */
+  uint16_t   soff;          /* Offset: 0x0004  TCD Signed Source Address Offset */
+  uint16_t   attr;          /* Offset: 0x0006  TCD Transfer Attributes */
+  uint32_t   nbytes;        /* Offset: 0x0008  TCD Signed Minor Loop Offset / Byte Count */
+  uint32_t   slast;         /* Offset: 0x000c  TCD Last Source Address Adjustment */
+  uint32_t   daddr;         /* Offset: 0x0010  TCD Destination Address */
+  uint16_t   doff;          /* Offset: 0x0014  TCD Signed Destination Address Offset */
+  uint16_t   citer;         /* Offset: 0x0016  TCD Current Minor Loop Link, Major Loop Count */
+  uint32_t   dlastsga;      /* Offset: 0x0018  TCD Last Destination Address Adjustment/Scatter Gather Address */
+  uint16_t   csr;           /* Offset: 0x001c  TCD Control and Status */
+  uint16_t   biter;         /* Offset: 0x001e  TCD Beginning Minor Loop Link, Major Loop Count */
 };
 
 #endif /* __ARCH_ARM_SRC_IMXRT_HARDWARE_IMXRT_EDMA_H */

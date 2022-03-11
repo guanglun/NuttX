@@ -121,6 +121,14 @@
 #  define EDMA_CONFIG_LINKTYPE_MINORLINK (1 << EDMA_CONFIG_LINKTYPE_SHIFT) /* Channel link after each minor loop */
 #  define EDMA_CONFIG_LINKTYPE_MAJORLINK (2 << EDMA_CONFIG_LINKTYPE_SHIFT) /* Channel link when major loop count exhausted */
 
+#define EDMA_CONFIG_LOOP_SHIFT           (2) /* Bits 2: Loop type */
+#define EDMA_CONFIG_LOOP_MASK            (3 << EDMA_CONFIG_LOOP_SHIFT)
+#  define EDMA_CONFIG_LOOPNONE           (0 << EDMA_CONFIG_LOOP_SHIFT) /* No looping */
+#  define EDMA_CONFIG_LOOPSRC            (1 << EDMA_CONFIG_LOOP_SHIFT) /* Source looping */
+#  define EDMA_CONFIG_LOOPDEST           (2 << EDMA_CONFIG_LOOP_SHIFT) /* Dest looping */
+
+#define EDMA_CONFIG_INTHALF              (1 << 3) /* Bits 3: Int on HALF */
+
 /****************************************************************************
  * Public Types
  ****************************************************************************/
@@ -136,6 +144,15 @@ enum imxrt_edma_xfrtype_e
   EDMA_MEM2MEM = 0,      /* Transfer from memory to memory */
   EDMA_PERIPH2MEM,       /* Transfer from peripheral to memory */
   EDMA_MEM2PERIPH,       /* Transfer from memory to peripheral */
+};
+
+/* eDMA transfer sises */
+
+enum kinetis_edma_sizes_e
+{
+  EDMA_8BIT    = 0,      /* Transfer data size 8 */
+  EDMA_16BIT   = 1,      /* Transfer data size 16 */
+  EDMA_32BIT   = 2,      /* Transfer data size 32 */
 };
 
 /* This structure holds the source/destination transfer attribute
@@ -306,7 +323,7 @@ void imxrt_dmach_free(DMACH_HANDLE handle);
  *
  ****************************************************************************/
 
-int imxrt_dmach_xfrsetup(DMACH_HANDLE *handle,
+int imxrt_dmach_xfrsetup(DMACH_HANDLE handle,
                          const struct imxrt_edma_xfrconfig_s *config);
 
 /****************************************************************************
@@ -398,7 +415,7 @@ void imxrt_dmach_stop(DMACH_HANDLE handle);
  *
  ****************************************************************************/
 
-unsigned int imxrt_dmach_getcount(DMACH_HANDLE *handle);
+unsigned int imxrt_dmach_getcount(DMACH_HANDLE handle);
 
 /****************************************************************************
  * Name: imxrt_dmasample

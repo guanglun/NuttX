@@ -122,6 +122,7 @@ struct imxrt_dmach_s
 {
   uint8_t chan;                   /* DMA channel number (0-IMXRT_EDMA_NCHANNELS) */
   bool inuse;                     /* true: The DMA channel is in use */
+  uint8_t dmamux;                 /* The DMAMUX channel selection */
   uint8_t ttype;                  /* Transfer type: M2M, M2P, P2M, or P2P */
   uint8_t state;                  /* Channel state.  See enum imxrt_dmastate_e */
   uint32_t flags;                 /* DMA channel flags */
@@ -400,18 +401,22 @@ static inline void imxrt_tcd_chanlink(uint8_t flags,
 static inline void imxrt_tcd_configure(struct imxrt_edmatcd_s *tcd,
                               const struct imxrt_edma_xfrconfig_s *config)
 {
+  tcd->flags    = config->flags;
   tcd->saddr    = config->saddr;
   tcd->soff     = config->soff;
   tcd->attr     = EDMA_TCD_ATTR_SSIZE(config->ssize) |  /* Transfer Attributes */
                   EDMA_TCD_ATTR_DSIZE(config->dsize);
   tcd->nbytes   = config->nbytes;
-  tcd->slast    = tcd->slast;
+  tcd->slast    = config->flags & EDMA_CONFIG_LOOPSRC ?  -config->iter : 0;
   tcd->daddr    = config->daddr;
   tcd->doff     = config->doff;
   tcd->citer    = config->iter & EDMA_TCD_CITER_CITER_MASK;
   tcd->biter    = config->iter & EDMA_TCD_BITER_BITER_MASK;
-  tcd->csr      = EDMA_TCD_CSR_DREQ; /* Assume last transfer */
-  tcd->dlastsga = 0;
+  tcd->csr      = config->flags & EDMA_CONFIG_LOOPDEST ?
+                                  0 : EDMA_TCD_CSR_DREQ;
+  tcd->csr      |= config->flags & EDMA_CONFIG_INTHALF ?
+                                  EDMA_TCD_CSR_INTHALF : 0;
+  tcd->dlastsga = config->flags & EDMA_CONFIG_LOOPDEST ?  -config->iter : 0;
 
   /* And special case flags */
 
@@ -505,8 +510,14 @@ static void imxrt_dmaterminate(struct imxrt_dmach_s *dmach, int result)
 
   for (tcd = dmach->head; tcd != NULL; tcd = next)
     {
-      next = (struct imxrt_edmatcd_s *)tcd->dlastsga;
-      imxrt_tcd_free(tcd);
+      /* If channel looped to itself we are done
+       * if not continue to free tcds in chain
+       */
+
+       next = tcd->flags & EDMA_CONFIG_LOOPDEST ?
+              NULL : (struct imxrt_edmatcd_s *)tcd->dlastsga;
+
+       imxrt_tcd_free(tcd);
     }
 
   dmach->head = NULL;
@@ -518,7 +529,9 @@ static void imxrt_dmaterminate(struct imxrt_dmach_s *dmach, int result)
   if (dmach->ttype == EDMA_MEM2MEM || dmach->ttype == EDMA_PERIPH2MEM)
     {
       /* Invalidate the cache to force reloads from memory. */
-#warning Missing logic
+
+      up_invalidate_dcache((uintptr_t) tcd->daddr,
+                           (uintptr_t)tcd->daddr + tcd->citer);
     }
 
   /* Perform the DMA complete callback */
@@ -915,6 +928,7 @@ DMACH_HANDLE imxrt_dmach_alloc(uint32_t dmamux, uint8_t dchpri)
           dmach        = candidate;
           dmach->inuse = true;
           dmach->state = IMXRT_DMA_IDLE;
+          dmach->dmamux = dmamux;
 
           /* Clear any pending interrupts on the channel */
 
@@ -927,10 +941,9 @@ DMACH_HANDLE imxrt_dmach_alloc(uint32_t dmamux, uint8_t dchpri)
           regval8 = EDMA_CERQ(chndx);
           putreg8(regval8, IMXRT_EDMA_CERQ);
 
-          /* Set the DMAMUX register associated with this channel */
+          /* Disable the associated DMAMUX for now */
 
-          regaddr = IMXRT_DMAMUX_CHCFG(chndx);
-          putreg32(dmamux, regaddr);
+          putreg32(0, IMXRT_DMAMUX_CHCFG(chndx));
           break;
         }
     }
@@ -967,7 +980,6 @@ DMACH_HANDLE imxrt_dmach_alloc(uint32_t dmamux, uint8_t dchpri)
 void imxrt_dmach_free(DMACH_HANDLE handle)
 {
   struct imxrt_dmach_s *dmach = (struct imxrt_dmach_s *)handle;
-  uintptr_t regaddr;
   uint8_t regval8;
 
   dmainfo("dmach: %p\n", dmach);
@@ -989,8 +1001,7 @@ void imxrt_dmach_free(DMACH_HANDLE handle)
 
   /* Disable the associated DMAMUX */
 
-  regaddr = IMXRT_DMAMUX_CHCFG(dmach->chan);
-  putreg32(0, regaddr);
+  putreg32(0, IMXRT_DMAMUX_CHCFG(dmach->chan));
 }
 
 /****************************************************************************
@@ -1019,7 +1030,7 @@ void imxrt_dmach_free(DMACH_HANDLE handle)
  *
  ****************************************************************************/
 
-int imxrt_dmach_xfrsetup(DMACH_HANDLE *handle,
+int imxrt_dmach_xfrsetup(DMACH_HANDLE handle,
                          const struct imxrt_edma_xfrconfig_s *config)
 {
   struct imxrt_dmach_s *dmach = (struct imxrt_dmach_s *)handle;
@@ -1031,7 +1042,7 @@ int imxrt_dmach_xfrsetup(DMACH_HANDLE *handle,
   uint16_t regval16;
 
   DEBUGASSERT(dmach != NULL);
-  dmainfo("dmach%u: %p config: %p\n", dmach, config);
+  dmainfo("dmach%u: %p config: %p\n", dmach->chan, dmach, config);
 
 #if CONFIG_IMXRT_EDMA_NTCD > 0
   /* Scatter/gather DMA is supported */
@@ -1051,6 +1062,20 @@ int imxrt_dmach_xfrsetup(DMACH_HANDLE *handle,
    */
 
   tcd->csr |= EDMA_TCD_CSR_INTMAJOR;
+
+  /* Is looped to it's self? */
+
+  if (config->flags & EDMA_CONFIG_LOOP_MASK)
+    {
+      /* Enable major link */
+
+      tcd->csr |= EDMA_TCD_CSR_MAJORELINK;
+
+      /* Set major linked channel back to this one */
+
+      tcd->csr   &= ~EDMA_TCD_CSR_MAJORLINKCH_MASK;
+      tcd->csr   |=  EDMA_TCD_CSR_MAJORLINKCH(dmach->chan);
+    }
 
   /* Is this the first descriptor in the list? */
 
@@ -1072,7 +1097,8 @@ int imxrt_dmach_xfrsetup(DMACH_HANDLE *handle,
        * this restriction could be removed with some effort).
        */
 
-      if (dmach->ttype != config->ttype)
+      if (dmach->ttype != config->ttype ||
+          dmach->flags & EDMA_CONFIG_LOOPDEST)
         {
           imxrt_tcd_free(tcd);
           return -EINVAL;
@@ -1175,6 +1201,10 @@ int imxrt_dmach_xfrsetup(DMACH_HANDLE *handle,
                       (uintptr_t)config->saddr + config->nbytes);
     }
 
+  /* Set the DMAMUX source and enable and optional trigger */
+
+  putreg8(dmach->dmamux, IMXRT_DMAMUX_CHCFG(dmach->chan));
+
   dmach->state = IMXRT_DMA_CONFIGURED;
   return OK;
 }
@@ -1222,14 +1252,13 @@ int imxrt_dmach_start(DMACH_HANDLE handle, edma_callback_t callback,
 
   DEBUGASSERT(dmach != NULL && dmach->state == IMXRT_DMA_CONFIGURED);
   chan            = dmach->chan;
-  dmainfo("dmach%u: %p callback: %p arg: %p\n", dmach, chan, callback, arg);
+  dmainfo("dmach%u: %p callback: %p arg: %p\n", chan, dmach, callback, arg);
 
   /* Save the callback info.  This will be invoked when the DMA completes */
 
   flags           = spin_lock_irqsave(NULL);
   dmach->callback = callback;
   dmach->arg      = arg;
-  dmach->state    = IMXRT_DMA_ACTIVE;
 
 #if CONFIG_IMXRT_EDMA_NTCD > 0
   /* Although it is not recommended, it might be possible to call this
@@ -1239,6 +1268,8 @@ int imxrt_dmach_start(DMACH_HANDLE handle, edma_callback_t callback,
   if (dmach->state != IMXRT_DMA_ACTIVE)
 #endif
     {
+      dmach->state    = IMXRT_DMA_ACTIVE;
+
       /* Enable channel ERROR interrupts */
 
       regval8         = EDMA_SEEI(chan);
@@ -1247,7 +1278,7 @@ int imxrt_dmach_start(DMACH_HANDLE handle, edma_callback_t callback,
       /* Enable the DMA request for this channel */
 
       regval8         = EDMA_SERQ(chan);
-      putreg8(regval8, IMXRT_EDMA_SERQ_OFFSET);
+      putreg8(regval8, IMXRT_EDMA_SERQ);
     }
 
   spin_unlock_irqrestore(NULL, flags);
@@ -1316,7 +1347,7 @@ void imxrt_dmach_stop(DMACH_HANDLE handle)
  *
  ****************************************************************************/
 
-unsigned int imxrt_dmach_getcount(DMACH_HANDLE *handle)
+unsigned int imxrt_dmach_getcount(DMACH_HANDLE handle)
 {
   struct imxrt_dmach_s *dmach = (struct imxrt_dmach_s *)handle;
   unsigned int remaining = 0;
