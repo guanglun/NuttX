@@ -138,6 +138,32 @@ _xtensa_context_save:
 	rsr		a3, SAR
 	s32i	a3, a2, (4 * REG_SAR)
 
+
+
+	/* FPU save*/
+	rur.FCR	a4
+	s32i	a4, a2, (4 * REG_FCR)
+	rur.FSR	a4
+	s32i	a4, a2, (4 * REG_FSR)
+
+	ssi	f0,a2, (4 * REG_F0)
+	ssi	f1,a2, (4 * REG_F1)
+	ssi	f2,a2, (4 * REG_F2)
+	ssi	f3,a2, (4 * REG_F3)
+	ssi	f4,a2, (4 * REG_F4)
+	ssi	f5,a2, (4 * REG_F5)
+	ssi	f6,a2, (4 * REG_F6)
+	ssi	f7,a2, (4 * REG_F7)
+	ssi	f8,a2, (4 * REG_F8)
+	ssi	f9,a2, (4 * REG_F9)
+	ssi	f10,a2, (4 * REG_F10)
+	ssi	f11,a2, (4 * REG_F11)
+	ssi	f12,a2, (4 * REG_F12)
+	ssi	f13,a2, (4 * REG_F13)
+	ssi	f14,a2, (4 * REG_F14)
+	ssi	f15,a2, (4 * REG_F15)
+
+
 #if XCHAL_HAVE_LOOPS != 0
 	rsr		a3, LBEG
 	s32i	a3, a2, (4 * REG_LBEG)
@@ -468,6 +494,31 @@ _xtensa_context_restore:
 
 #error Overly support is not implemented
 #endif
+
+	/* FPU restore*/
+	l32i	a4, a2, (4 * REG_FCR)
+	wur.FCR	a4
+	l32i	a4, a2, (4 * REG_FSR)
+	wur.FSR	a4
+
+	lsi	f0, a2, (4 * REG_F0)
+	lsi	f1, a2, (4 * REG_F1)
+	lsi	f2, a2, (4 * REG_F2)
+	lsi	f3, a2, (4 * REG_F3)
+	lsi	f4, a2, (4 * REG_F4)
+	lsi	f5, a2, (4 * REG_F5)
+	lsi	f6, a2, (4 * REG_F6)
+	lsi	f7, a2, (4 * REG_F7)
+	lsi	f8, a2, (4 * REG_F8)
+	lsi	f9, a2, (4 * REG_F9)
+	lsi	f10, a2, (4 * REG_F10)
+	lsi	f11, a2, (4 * REG_F11)
+	lsi	f12, a2, (4 * REG_F12)
+	lsi	f13, a2, (4 * REG_F13)
+	lsi	f14, a2, (4 * REG_F14)
+	lsi	f15, a2, (4 * REG_F15)
+
+
 
 	l32i	a3, a2, (4 * REG_SAR)
 	l32i	sp, a2, (4 * REG_A1)

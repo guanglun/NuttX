@@ -98,7 +98,27 @@
 #define REG_EXCCAUSE        (19)
 #define REG_EXCVADDR        (20)
 
-#define _REG_LOOPS_START    (21)
+#define REG_FCR             (21)
+#define REG_FSR             (22)
+#define REG_F0              (23)
+#define REG_F1              (24)
+#define REG_F2              (25)
+#define REG_F3              (26)
+#define REG_F4              (27)
+#define REG_F5              (28)
+#define REG_F6              (29)
+#define REG_F7              (30)
+#define REG_F8              (31)
+#define REG_F9              (32)
+#define REG_F10             (33)
+#define REG_F11             (34)
+#define REG_F12             (35)
+#define REG_F13             (36)
+#define REG_F14             (37)
+#define REG_F15             (38)
+
+// #define _REG_LOOPS_START    (21)
+#define _REG_LOOPS_START    (39)
 
 #if XCHAL_HAVE_LOOPS != 0
 #  define REG_LBEG          (_REG_LOOPS_START + 0)
