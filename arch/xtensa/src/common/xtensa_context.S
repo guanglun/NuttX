@@ -141,10 +141,12 @@ _xtensa_context_save:
 
 
 	/* FPU save*/
-	rur.FCR	a4
-	s32i	a4, a2, (4 * REG_FCR)
-	rur.FSR	a4
-	s32i	a4, a2, (4 * REG_FSR)
+	rsr		a3, BR
+	s32i	a3, a2, (4 * REG_BR)
+	rur.FCR	a3
+	s32i	a3, a2, (4 * REG_FCR)
+	rur.FSR	a3
+	s32i	a3, a2, (4 * REG_FSR)
 
 	ssi	f0,a2, (4 * REG_F0)
 	ssi	f1,a2, (4 * REG_F1)
@@ -162,7 +164,6 @@ _xtensa_context_save:
 	ssi	f13,a2, (4 * REG_F13)
 	ssi	f14,a2, (4 * REG_F14)
 	ssi	f15,a2, (4 * REG_F15)
-
 
 #if XCHAL_HAVE_LOOPS != 0
 	rsr		a3, LBEG
@@ -496,10 +497,12 @@ _xtensa_context_restore:
 #endif
 
 	/* FPU restore*/
-	l32i	a4, a2, (4 * REG_FCR)
-	wur.FCR	a4
-	l32i	a4, a2, (4 * REG_FSR)
-	wur.FSR	a4
+	l32i	a3, a2, (4 * REG_BR)
+	wsr		a3, BR
+	l32i	a3, a2, (4 * REG_FCR)
+	wur.FCR	a3
+	l32i	a3, a2, (4 * REG_FSR)
+	wur.FSR	a3
 
 	lsi	f0, a2, (4 * REG_F0)
 	lsi	f1, a2, (4 * REG_F1)
@@ -517,8 +520,6 @@ _xtensa_context_restore:
 	lsi	f13, a2, (4 * REG_F13)
 	lsi	f14, a2, (4 * REG_F14)
 	lsi	f15, a2, (4 * REG_F15)
-
-
 
 	l32i	a3, a2, (4 * REG_SAR)
 	l32i	sp, a2, (4 * REG_A1)

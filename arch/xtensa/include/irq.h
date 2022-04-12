@@ -117,8 +117,10 @@
 #define REG_F14             (37)
 #define REG_F15             (38)
 
+#define REG_BR              (39)
+
 // #define _REG_LOOPS_START    (21)
-#define _REG_LOOPS_START    (39)
+#define _REG_LOOPS_START    (40)
 
 #if XCHAL_HAVE_LOOPS != 0
 #  define REG_LBEG          (_REG_LOOPS_START + 0)
